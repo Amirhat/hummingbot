@@ -36,6 +36,11 @@ order_books_db_2 = {
 mock_api_enabled = os.getenv("MOCK_API_ENABLED")
 
 """
+
+# Nobitex Tests
+nobitex_api_key = os.getenv("NOBITEX_API_KEY")
+
+
 # AscendEX Tests
 ascend_ex_api_key = os.getenv("ASCEND_EX_KEY")
 ascend_ex_secret_key = os.getenv("ASCEND_EX_SECRET")
