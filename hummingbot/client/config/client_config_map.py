@@ -674,6 +674,17 @@ class AscendExRateSourceMode(ExchangeRateSourceModeBase):
         title = "ascend_ex"
 
 
+class NobitexRateSourceMode(ExchangeRateSourceModeBase):
+    name: str = Field(
+        default="nobitex",
+        const=True,
+        client_data=None,
+    )
+
+    class Config:
+        title = "nobitex"
+
+
 class BinanceRateSourceMode(ExchangeRateSourceModeBase):
     name: str = Field(
         default="binance",
@@ -906,6 +917,7 @@ RATE_SOURCE_MODES = {
     CubeRateSourceMode.Config.title: CubeRateSourceMode,
     HyperliquidRateSourceMode.Config.title: HyperliquidRateSourceMode,
     TegroRateSourceMode.Config.title: TegroRateSourceMode,
+    NobitexRateSourceMode.Config.title: NobitexRateSourceMode,
 }
 
 

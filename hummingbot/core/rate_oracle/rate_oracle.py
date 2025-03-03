@@ -18,6 +18,7 @@ from hummingbot.core.rate_oracle.sources.dexalot_rate_source import DexalotRateS
 from hummingbot.core.rate_oracle.sources.gate_io_rate_source import GateIoRateSource
 from hummingbot.core.rate_oracle.sources.hyperliquid_rate_source import HyperliquidRateSource
 from hummingbot.core.rate_oracle.sources.kucoin_rate_source import KucoinRateSource
+from hummingbot.core.rate_oracle.sources.nobitex_rate_source import NobitexRateSource
 from hummingbot.core.rate_oracle.sources.rate_source_base import RateSourceBase
 from hummingbot.core.rate_oracle.sources.tegro_rate_source import TegroRateSource
 from hummingbot.core.rate_oracle.utils import find_rate
@@ -37,6 +38,7 @@ RATE_ORACLE_SOURCES = {
     "dexalot": DexalotRateSource,
     "hyperliquid": HyperliquidRateSource,
     "tegro": TegroRateSource,
+    "nobitex": NobitexRateSource,
 }
 
 
@@ -46,6 +48,7 @@ class RateOracle(NetworkBase):
     It achieves this by query URL on a given source for prices and store them, either in cache or as an object member.
     The find_rate is then used on these prices to find a rate on a given pair.
     """
+
     _logger: Optional[HummingbotLogger] = None
     _shared_instance: "RateOracle" = None
 
@@ -63,7 +66,7 @@ class RateOracle(NetworkBase):
 
     def __init__(self, source: Optional[RateSourceBase] = None, quote_token: Optional[str] = None):
         super().__init__()
-        self._source: RateSourceBase = source if source is not None else BinanceRateSource()
+        self._source: RateSourceBase = source if source is not None else NobitexRateSource()
         self._prices: Dict[str, Decimal] = {}
         self._fetch_price_task: Optional[asyncio.Task] = None
         self._ready_event = asyncio.Event()
@@ -82,8 +85,7 @@ class RateOracle(NetworkBase):
         except asyncio.CancelledError:
             raise
         except Exception:
-            self.logger().error("Unexpected error while waiting for data feed to get ready.",
-                                exc_info=True)
+            self.logger().error("Unexpected error while waiting for data feed to get ready.", exc_info=True)
 
     @property
     def name(self) -> str:
@@ -210,6 +212,9 @@ class RateOracle(NetworkBase):
             except asyncio.CancelledError:
                 raise
             except Exception:
-                self.logger().network(f"Error fetching new prices from {self.source.name}.", exc_info=True,
-                                      app_warning_msg=f"Couldn't fetch newest prices from {self.source.name}.")
+                self.logger().network(
+                    f"Error fetching new prices from {self.source.name}.",
+                    exc_info=True,
+                    app_warning_msg=f"Couldn't fetch newest prices from {self.source.name}.",
+                )
             await asyncio.sleep(1)
