@@ -142,9 +142,35 @@ class NobitexExchange(ExchangePyBase):
     # TODO: First check done
     async def get_all_pairs_prices(self) -> List[Dict[str, str]]:
         pairs_prices = await self._api_get(
-            path_url=CONSTANTS.NOBITEX_ALL_ORDER_BOOK_PATHS, limit_id=CONSTANTS.SNAPSHOT_PATH_URL
+            path_url=CONSTANTS.NOBITEX_ALL_PRICE_PATH, limit_id=CONSTANTS.NOBITEX_ALL_PRICE_PATH
         )
-        return pairs_prices
+        if pairs_prices.get("status") == "ok":
+            prices = {}
+            nobitex_pairs_prices = pairs_prices.get("stats", {})
+            global_pairs_prices = pairs_prices.get("global", {}).get("binance", {})
+            for pair in nobitex_pairs_prices:
+                if pair.endswith("rls"):
+                    quote = "IRT"
+                    base = pair.replace("-rls", "").upper()
+                    price = nobitex_pairs_prices.get(pair).get("latest")
+                    if price:
+                        price = Decimal(price) / 10
+                        prices[combine_to_hb_trading_pair(base=base, quote=quote)] = price
+            for pair in global_pairs_prices:
+                quote = "USDT"
+                base = pair.upper()
+                price = global_pairs_prices.get(pair)
+                if price:
+                    price = Decimal(f"{price}")
+                    prices[combine_to_hb_trading_pair(base=base, quote=quote)] = price
+
+            pairs_prices = []
+            for pair in prices:
+                pairs_prices.append({"trading_pair": pair, "price": prices[pair]})
+
+            return pairs_prices
+        else:
+            raise Exception(f"Error getting all pairs prices: {pairs_prices.get('message')}")
 
     # TODO: First check done, this is not match to the binance
     def _is_request_exception_related_to_time_synchronizer(self, request_exception: Exception):
@@ -262,8 +288,11 @@ class NobitexExchange(ExchangePyBase):
             order_result = await self._api_post(
                 path_url=CONSTANTS.ORDER_PATH_URL, data=api_params, is_auth_required=True
             )
-            o_id = str(order_result["order"]["id"])
-            transact_time = datetime.fromisoformat(order_result["order"]["created_at"]).timestamp()
+            if order_result.get("status") == "ok":
+                o_id = str(order_result.get("order", {}).get("id"))
+                transact_time = datetime.fromisoformat(order_result.get("order", {}).get("created_at")).timestamp()
+            else:
+                raise Exception(f"Error placing order: {order_result.get('message')}")
         except IOError as e:
             error_description = str(e)
             is_server_overloaded = (
@@ -311,19 +340,19 @@ class NobitexExchange(ExchangePyBase):
                 if pair.upper().endswith("USDT"):
                     quote = "USDT"
                     notional_case = "usdt"
+                    min_notional = Decimal(minNotional.get(notional_case))
                 elif pair.upper().endswith("IRT"):
                     # Decides based on test
                     price_precision = Decimal(price_precision) / 10
                     quote = "IRT"
                     notional_case = "rls"
+                    min_notional = Decimal(minNotional.get(notional_case)) / 10
                 else:
                     self.logger().warning(f"Error parsing the trading pair rule {pair}. Skipping.")
                     continue
 
                 base = pair.replace(quote, "").upper()
                 trading_pair = combine_to_hb_trading_pair(base=base, quote=quote)
-
-                min_notional = minNotional.get(notional_case)
 
                 if min_notional is None or amount_precision is None or price_precision is None:
                     self.logger().warning(f"Error parsing the trading pair rule {pair}. Skipping.")
@@ -332,7 +361,7 @@ class NobitexExchange(ExchangePyBase):
                 min_order_size = Decimal(amount_precision)
                 min_price_increment = Decimal(price_precision)
                 min_base_amount_increment = Decimal(amount_precision)
-                min_notional_size = Decimal(min_notional)
+                min_notional_size = min_notional
 
                 retval.append(
                     TradingRule(
@@ -599,6 +628,14 @@ class NobitexExchange(ExchangePyBase):
                     commission_asset = "IRT"
                     commission_amount = commission_amount / 10
 
+                quote = self._convert_trading_pair_naming_mapping(trade["dstCurrency"])
+
+                if quote == "RLS":
+                    quote = "IRT"
+                    price = Decimal(trade["price"]) / 10
+                else:
+                    price = Decimal(trade["price"])
+
                 fee = TradeFeeBase.new_spot_fee(
                     fee_schema=self.trade_fee_schema(),
                     trade_type=order.trade_type,
@@ -613,8 +650,8 @@ class NobitexExchange(ExchangePyBase):
                     trading_pair=order.trading_pair,
                     fee=fee,
                     fill_base_amount=Decimal(trade["amount"]),
-                    fill_quote_amount=Decimal(trade["amount"]) * Decimal(trade["price"]),
-                    fill_price=Decimal(trade["price"]),
+                    fill_quote_amount=Decimal(trade["amount"]) * price,
+                    fill_price=price,
                     fill_timestamp=time.time() * 1e-3,
                 )
                 trade_updates.append(trade_update)
@@ -628,19 +665,24 @@ class NobitexExchange(ExchangePyBase):
     # TODO: First check done
     async def _request_order_status(self, tracked_order: InFlightOrder) -> OrderUpdate:
 
-        updated_order_data = await self._api_get(
+        updated_order_data = await self._api_post(
             path_url=CONSTANTS.ORDER_STATUS_PATH_URL,
-            params={"id": int(tracked_order.exchange_order_id), "clientOrderId": tracked_order.client_order_id},
+            data={"id": int(tracked_order.exchange_order_id), "clientOrderId": tracked_order.client_order_id},
             is_auth_required=True,
         )
 
-        new_state = CONSTANTS.ORDER_STATE[updated_order_data["order"]["status"]]
-        if new_state == OrderState.OPEN and updated_order_data["order"]["partial"]:
+        if updated_order_data.get("order", {}).get("status") is None:
+            raise Exception(
+                f"Error fetching order status for order {tracked_order.client_order_id}. Error: {updated_order_data}"
+            )
+
+        new_state = CONSTANTS.ORDER_STATE[updated_order_data.get("order", {}).get("status")]
+        if new_state == OrderState.OPEN and updated_order_data.get("order", {}).get("partial"):
             new_state = OrderState.PARTIALLY_FILLED
 
         order_update = OrderUpdate(
             client_order_id=tracked_order.client_order_id,
-            exchange_order_id=str(updated_order_data["order"]["id"]),
+            exchange_order_id=str(updated_order_data.get("order", {}).get("id")),
             trading_pair=tracked_order.trading_pair,
             update_timestamp=time.time() * 1e-3,
             new_state=new_state,

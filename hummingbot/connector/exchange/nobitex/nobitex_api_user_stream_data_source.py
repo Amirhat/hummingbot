@@ -128,15 +128,23 @@ class NobitexAPIUserStreamDataSource(UserStreamTrackerDataSource):
             if commission_asset == "IRT":
                 commission_amount = commission_amount / 10
 
+            quote = order.get("quote")
+            if quote == "IRT":
+                price = Decimal(trade.get("price")) / 10
+                total = Decimal(trade.get("total")) / 10
+            else:
+                price = Decimal(trade.get("price"))
+                total = Decimal(trade.get("total"))
+
             trades.append(
                 {
                     "id": trade["id"],
                     "order_exchange_id": order.get("id"),
                     "client_order_id": order.get("client_order_id"),
                     "timestamp": datetime.fromtimestamp(trade.get("timestamp")).timestamp() * 1e3,
-                    "price": Decimal(trade.get("price")),
+                    "price": price,
                     "amount": Decimal(trade.get("amount")),
-                    "total": Decimal(trade.get("total")),
+                    "total": total,
                     "commission": commission_amount,
                     "commission_asset": commission_asset,
                 }
@@ -177,8 +185,13 @@ class NobitexAPIUserStreamDataSource(UserStreamTrackerDataSource):
                 trading_pair = combine_to_hb_trading_pair(base=base, quote=quote)
 
                 price = order.get("price")
+
                 order_price = self._connector.nobitex_convert_received_rls_to_irt(
                     trading_pair=trading_pair, value=Decimal(price if price != "market" else order_average_price)
+                )
+
+                order_average_price = self._connector.nobitex_convert_received_rls_to_irt(
+                    trading_pair=trading_pair, value=order_average_price
                 )
 
                 order_quantity = Decimal(order.get("amount"))
@@ -201,6 +214,8 @@ class NobitexAPIUserStreamDataSource(UserStreamTrackerDataSource):
                     "client_order_id": client_order_id,
                     "exchange_order_id": order_id,
                     "trading_pair": trading_pair,
+                    "quote": quote,
+                    "base": base,
                     "order_status": order_status,
                     "order_price": order_price,
                     "order_quantity": order_quantity,

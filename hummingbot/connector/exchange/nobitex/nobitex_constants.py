@@ -51,6 +51,9 @@ SNAPSHOT_PATH_URL = NOBITEX_ORDER_BOOK_PATH
 
 NOBITEX_ALL_ORDER_BOOK_PATHS = "/v3/orderbook/all"  # GET /v3/orderbook/all to get all order book
 
+NOBITEX_ALL_PRICE_PATH = "/market/stats"  # GET /market/stats to get all price
+NOBITEX_GLOBAL_PRICE_PATH = "/market/global-stats"  # GET /market/global-stats to get all global price
+
 NOBITEX_SERVER_OPTIONS_PATH = "/v2/options"  # GET /v2/options to get server options and status
 
 NOBITEX_TRADE_PATH = "/v2/trades/"  # GET /v2/trades/:SYMBOL to get trades
@@ -121,6 +124,9 @@ NO_LIMIT = sys.maxsize
 
 
 RATE_LIMITS = [
+    # Public Market Data APIs
+    RateLimit(limit_id=NOBITEX_ALL_PRICE_PATH, limit=20, time_interval=60),  # GET /market/stats
+    RateLimit(limit_id=NOBITEX_GLOBAL_PRICE_PATH, limit=100, time_interval=600),  # POST /market/global-stats
     # Public Market Data APIs - 300 requests per minute
     RateLimit(limit_id=NOBITEX_ORDER_BOOK_PATH, limit=300, time_interval=60),  # /v3/orderbook
     RateLimit(limit_id=NOBITEX_TRADE_PATH, limit=60, time_interval=60),  # /v2/trades
