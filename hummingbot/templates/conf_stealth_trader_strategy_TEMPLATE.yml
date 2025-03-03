@@ -1,0 +1,43 @@
+########################################################
+###       Stealth Trader strategy config               ###
+########################################################
+
+template_version: 6
+strategy: null
+# The following configurations are only required for the
+# stealth_trader strategy
+
+# Connector and token parameters
+connector: null
+trading_pair: null
+
+# Total amount to be traded, considering all orders
+target_asset_amount: null
+
+# Base size of each individual order (will be randomized)
+order_step_size: null
+
+# Price range for orders
+price_lower_bound: null
+price_upper_bound: null
+
+# How long each order should be active before being canceled (in seconds)
+order_lifetime: 60.0
+
+# Percentage of randomization to apply to order amounts (0.1 = 10%)
+randomization_percentage: 0.1
+
+# Time in seconds before forcibly cancelling the limit order
+# If cancel_order_wait_time is 60 and the order is still open after 60 seconds since placing the order,
+# it will cancel the limit order.
+cancel_order_wait_time: 60.0
+
+# Specify buy/sell.
+trade_side: "buy"
+
+# Specifies if the strategy should run with a delayed start
+is_delayed_start_execution: False
+
+# Date and time the strategy should start running
+# Only valid if is_delayed_start_execution is True
+start_datetime: null
