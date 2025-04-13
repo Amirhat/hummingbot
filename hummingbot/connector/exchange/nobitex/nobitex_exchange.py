@@ -763,11 +763,20 @@ class NobitexExchange(ExchangePyBase):
 
     async def _get_last_traded_price(self, trading_pair: str) -> float:
 
+        # if trading_pair == "IRT-USDT":
+        #     symbol = "USDTIRT"
+        # else:
+        #     symbol = await self.exchange_symbol_associated_to_pair(trading_pair=trading_pair)
+
         symbol = await self.exchange_symbol_associated_to_pair(trading_pair=trading_pair)
 
         resp_json = await self._api_request(
             method=RESTMethod.GET, path_url=CONSTANTS.SNAPSHOT_PATH_URL + symbol, limit_id=CONSTANTS.SNAPSHOT_PATH_URL
         )
+
+        # if trading_pair == "IRT-USDT":
+        #     lastPrice = 10 / Decimal(resp_json["lastTradePrice"])
+        #     return float(lastPrice)
 
         if str(symbol).endswith("IRT"):
             lastPrice = Decimal(resp_json["lastTradePrice"]) / 10

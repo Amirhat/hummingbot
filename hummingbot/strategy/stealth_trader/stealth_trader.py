@@ -383,17 +383,26 @@ class StealthTraderStrategy(StrategyPyBase):
         if self.has_enough_balance(market_info, quantized_amount):
             self._quantity_remaining -= sub_amount
             if not self._is_buy:
-                raise NotImplementedError("Sell orders are not implemented yet")
+                order_id = self.sell_with_specific_market(
+                    market_info, quantized_amount, order_type=OrderType.LIMIT, price=quantized_price
+                )
+                self._time_to_cancel[order_id] = self._last_timestamp + self._order_lifetime
+                self.log_with_clock(
+                    logging.INFO,
+                    f"Submitting {TradeType.SELL.name} order for {quantized_amount} {market_info.base_asset} at "
+                    f"{quantized_price} {market_info.quote_asset}.",
+                )
 
-            order_id = self.buy_with_specific_market(
-                market_info, quantized_amount, order_type=OrderType.LIMIT, price=quantized_price
-            )
-            self._time_to_cancel[order_id] = self._last_timestamp + self._order_lifetime
-            self.log_with_clock(
-                logging.INFO,
-                f"Submitting {TradeType.BUY.name} order for {quantized_amount} {market_info.base_asset} at "
-                f"{quantized_price} {market_info.quote_asset}.",
-            )
+            else:
+                order_id = self.buy_with_specific_market(
+                    market_info, quantized_amount, order_type=OrderType.LIMIT, price=quantized_price
+                )
+                self._time_to_cancel[order_id] = self._last_timestamp + self._order_lifetime
+                self.log_with_clock(
+                    logging.INFO,
+                    f"Submitting {TradeType.BUY.name} order for {quantized_amount} {market_info.base_asset} at "
+                    f"{quantized_price} {market_info.quote_asset}.",
+                )
         else:
             self.log_with_clock(
                 logging.WARNING, f"Not enough balance to submit order for {quantized_amount} {market_info.base_asset}."

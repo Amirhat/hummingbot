@@ -22,12 +22,14 @@ EVENT_TYPE_ORDER_CHANGE = "order_change"
 # URLs
 
 REST_URLS = {
-    "nobitex_main": "https://testnetapi.nobitex.ir",  # "https://api.nobitex.ir",
+    # "nobitex_main": "https://api.nobitex.ir",
+    "nobitex_main": "https://testnetapi.nobitex.ir",
     # "nobitex_testnet": "https://testnetapi.nobitex.ir"
 }
 
 WSS_URL = {
-    "nobitex_main": "wss://testwss.nobitex.ir/connection/websocket",  # "wss://wss.nobitex.ir/connection/websocket",
+    # "nobitex_main": "wss://wss.nobitex.ir/connection/websocket",
+    "nobitex_main": "wss://testwss.nobitex.ir/connection/websocket",
     # "nobitex_testnet": "wss://testwss.nobitex.ir/connection/websocket"
 }
 

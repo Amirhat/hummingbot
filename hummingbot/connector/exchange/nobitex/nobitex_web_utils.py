@@ -1,3 +1,5 @@
+import random
+import string
 import time
 from typing import Callable, Optional
 
@@ -5,7 +7,25 @@ import hummingbot.connector.exchange.nobitex.nobitex_constants as CONSTANTS
 from hummingbot.connector.time_synchronizer import TimeSynchronizer
 from hummingbot.core.api_throttler.async_throttler import AsyncThrottler
 from hummingbot.core.web_assistant.auth import AuthBase
+from hummingbot.core.web_assistant.connections.data_types import RESTRequest
+from hummingbot.core.web_assistant.rest_pre_processors import RESTPreProcessorBase
 from hummingbot.core.web_assistant.web_assistants_factory import WebAssistantsFactory
+
+
+class NobitexRESTPreProcessor(RESTPreProcessorBase):
+    async def pre_process(self, request: RESTRequest) -> RESTRequest:
+        if request.headers is None:
+            request.headers = {}
+
+        headers_generic = {}
+        random_XXXXX = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
+        random_XXXXX = "TraderBot/" + random_XXXXX  # or "TraderBot/HUMING"
+        headers_generic["user-agent"] = random_XXXXX
+
+        request.headers = dict(
+            list(request.headers.items()) + list(headers_generic.items())
+        )
+        return request
 
 
 def public_rest_url(path_url: str, domain: str = CONSTANTS.DEFAULT_DOMAIN) -> str:
@@ -37,7 +57,11 @@ def build_api_factory(
 ) -> WebAssistantsFactory:
     throttler = throttler or create_throttler()
 
-    api_factory = WebAssistantsFactory(throttler=throttler, auth=auth)
+    rest_pre_processors = [
+        NobitexRESTPreProcessor(),
+    ]
+
+    api_factory = WebAssistantsFactory(throttler=throttler, auth=auth, rest_pre_processors=rest_pre_processors)
 
     # rest_pre_processors=None  #[
     #    TimeSynchronizerRESTPreProcessor(synchronizer=time_synchronizer, time_provider=time_provider),
@@ -46,7 +70,10 @@ def build_api_factory(
 
 
 def build_api_factory_without_time_synchronizer_pre_processor(throttler: AsyncThrottler) -> WebAssistantsFactory:
-    api_factory = WebAssistantsFactory(throttler=throttler)
+    rest_pre_processors = [
+        NobitexRESTPreProcessor(),
+    ]
+    api_factory = WebAssistantsFactory(throttler=throttler, rest_pre_processors=rest_pre_processors)
     return api_factory
 
 
